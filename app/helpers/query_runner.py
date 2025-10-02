@@ -5,15 +5,9 @@ import pg8000
 import pyodbc
 import oracledb
 
-from app.models.schema_info_model import SchemaInfo
-
-class LlmQueryRunner:
-    # Execute SQL query using the database credentials
-    def executeSQL(db_session_id: str, sql_query: str):
+class QueryRunner:
+    def execute_query(db_credentials: dict, sql_query: str):
         try:
-            credentials_entry = SchemaInfo.objects(db_session_id = db_session_id).only('db_credentials').first()
-            db_credentials = credentials_entry.db_credentials
-
             user = db_credentials["user"]
             password = db_credentials["password"]
             host = db_credentials["host"]
@@ -21,24 +15,21 @@ class LlmQueryRunner:
             database = db_credentials["database"]
             db_type = db_credentials["db_type"]
 
+            conn = None
             if db_type.upper() == "MYSQL":
-                conn = MySQLdb.connect(user = user, password = password, host = host, port = int(port), db = database)
+                conn = MySQLdb.connect(user=user, password=password, host=host, port=int(port), db=database)
             elif db_type.upper() == "POSTGRESQL":
-                conn = pg8000.connect(user = user, password = password, host = host, port = int(port), database = database)
+                conn = pg8000.connect(user=user, password=password, host=host, port=int(port), database=database)
             elif db_type.upper() == "MSSQL":
                 conn = pyodbc.connect(
                     f"DRIVER={{ODBC Driver 18 for SQL Server}};"
-                    f"SERVER={host},{port};"
-                    f"DATABASE={database};"
-                    f"UID={user};"
-                    f"PWD={password};"
-                    f"TrustServerCertificate=yes;"
-                    f"Encrypt=yes;"
+                    f"SERVER={host},{port};DATABASE={database};UID={user};PWD={password};"
+                    f"TrustServerCertificate=yes;Encrypt=yes;"
                 )
             elif db_type.upper() == "ORACLE":
-                conn = oracledb.connect(user = user, password = password, host = host, port = int(port), service_name = database)
+                conn = oracledb.connect(user=user, password=password, host=host, port=int(port), service_name=database)
             else:
-                raise ValueError(status_code = 400, detail = "Unsupported database type")
+                raise ValueError(f"Unsupported database type: {db_type}")
             
             # Execute the sql query
             with conn:
