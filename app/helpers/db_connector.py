@@ -63,7 +63,7 @@ def connect_and_save_schema(user: str, password: str, host: str, port: str, data
             f.write(db_schema)
 
         # Schedule file for deletion after 1 hour (3600 seconds)
-        delete_file_after_delay(schema_file, delay_seconds=120)
+        delete_file_after_delay(schema_file, delay_seconds=3600)
 
         return db_schema, schema_file
     except Exception as e:
