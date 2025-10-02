@@ -7,23 +7,44 @@ from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
 
 load_dotenv(verbose=True)
 
-def get_llm_client():
+# ------------------------------
+# LLM Client for SQL Generation
+# ------------------------------
+def get_llm_client(task_type: str = "markdown"):
+    """
+    Returns an LLM client based on the task type.
+    - task_type="query"     -> gpt-oss-120b (for SQL/query generation)
+    - task_type="markdown"  -> llama3.1-8b (for summarization/markdown output)
+    """
     try:
+        # Centralized model config
+        model_config = {
+            "query": {
+                "model": "gpt-oss-120b",
+                "temperature": 0.7,
+                "top_p": 0.9,
+                "max_retries": 1,
+            },
+            "markdown": {
+                "model": "llama3.1-8b",
+                "temperature": 0.8,
+                "top_p": 0.85,
+                "max_retries": 0,
+            }
+        }
+
+        if task_type not in model_config:
+            raise ValueError(f"Unsupported task_type: {task_type}")
+
+        cfg = model_config[task_type]
+
         llm = ChatCerebras(
-            model="llama3.1-8b",
+            model=cfg["model"],
             api_key=os.getenv("CEREBRAS_API_KEY"),
-            temperature=0.8,
-            top_p=0.85,
-            max_retries=0,
-            # streaming=True
+            temperature=cfg["temperature"],
+            top_p=cfg["top_p"],
+            max_retries=cfg["max_retries"],
         )
-        # llm = ChatGoogleGenerativeAI(
-        #         model = "gemini-2.5-pro" , 
-        #         google_api_key = os.getenv("GOOGLE_API_KEY"), 
-        #         temperature = 0.8, 
-        #         top_p = 0.85, 
-        #         max_retries = 0
-        #     )
         return llm
     except Exception as e:
         # Get the traceback as a string
