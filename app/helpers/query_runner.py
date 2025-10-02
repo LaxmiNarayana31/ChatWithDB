@@ -6,6 +6,9 @@ import pyodbc
 import oracledb
 
 class QueryRunner:
+    # -------------------
+    # Execute SQL Query
+    # -------------------
     def execute_query(db_credentials: dict, sql_query: str):
         try:
             user = db_credentials["user"]
@@ -31,18 +34,38 @@ class QueryRunner:
             else:
                 raise ValueError(f"Unsupported database type: {db_type}")
             
+            result = []
             # Execute the sql query
             with conn:
-                with conn.cursor() as cur:
-                    cur.execute(sql_query)
-                    # Get column names from the cursor description
-                    columns = [column[0] for column in cur.description]
-                    
-                    # Fetch all rows and convert each row to a dictionary
-                    result = []
-                    for row in cur.fetchall():
-                        result.append(dict(zip(columns, row)))
+                try:
+                    with conn.cursor() as cur:
+                        cur.execute(sql_query)
+                        # Get column names from the cursor description
+                        columns = [column[0] for column in cur.description]
+                        
+                        # Fetch all rows and convert each row to a dictionary
+                        for row in cur.fetchall():
+                            result.append(dict(zip(columns, row)))
+                except Exception as e:
+                    print("SQL Execution Error:", str(e))
             return result
+        except Exception as e:
+            # Get the traceback as a string
+            traceback_str = traceback.format_exc()
+            print(traceback_str)
+            # Get the line number of the exception
+            line_no = traceback.extract_tb(e.__traceback__)[-1][1]
+            print(f"Exception occurred on line {line_no}")
+            return str(e)
+    
+    # --------------------------
+    # Check for Unsafe Queries
+    # --------------------------
+    def is_safe_query(query: str) -> bool:
+        try:
+            unsafe_keywords = ["DROP", "DELETE", "UPDATE", "INSERT", "ALTER", "TRUNCATE"]
+            q_upper = query.upper()
+            return not any(keyword in q_upper for keyword in unsafe_keywords)
         except Exception as e:
             # Get the traceback as a string
             traceback_str = traceback.format_exc()
