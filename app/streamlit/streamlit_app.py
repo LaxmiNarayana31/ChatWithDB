@@ -1,6 +1,7 @@
 import os
 import re
 import time
+from sqlalchemy.exc import OperationalError
 
 import streamlit as st
 from jinja2 import Template
@@ -68,9 +69,10 @@ def main():
                             st.session_state.page = "chat"
                             st.success(f"Connected!")
                             st.rerun()
+                        except OperationalError as e:
+                            print(f"OperationalError: {e}")
                         except Exception as e:
-                            st.error(f"Connection failed: {str(e)}")
-
+                            st.error(f"Connection failed")
     # ---------------------------
     # Chat Page
     # ---------------------------
@@ -139,6 +141,10 @@ def main():
                         match = re.search(r"```(?:sql)?\s*(.*?)\s*```", generated_sql_query, re.S)
                         if match:
                             generated_sql_query = match.group(1).strip()
+
+                        print("============ generated_sql_query =============")
+                        print(generated_sql_query)
+                        print("=============================================")
 
                         # ---------------------------
                         # Validate + Run SQL
