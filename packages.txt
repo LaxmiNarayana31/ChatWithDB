@@ -1,4 +1,11 @@
+# For mysqlclient
 python3-dev
 default-libmysqlclient-dev
 build-essential
 pkg-config
+
+# For MSSQL ODBC driver
+unixodbc
+unixodbc-dev
+msodbcsql18
+mssql-tools
