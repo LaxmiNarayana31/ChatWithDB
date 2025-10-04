@@ -1,45 +1,54 @@
 # ChatWithDB
 
-ChatWithDB is a Streamlit application that lets you connect to a relational database, automatically extracts the database schema, and uses an LLM to convert natural-language questions into safe, read-only SQL queries and present a short summary of results.
+ChatWithDB is a Streamlit application for interactively querying relational databases using natural language. It:
 
-The app is designed for experimentation and prototyping: connect to a dev/test database, ask questions in plain English and get back executable SQL and summarized results (preview rows only). The schema is stored temporarily on disk and automatically removed after an hour.
+- Connects to a database (MySQL, PostgreSQL, MSSQL, Oracle).
+- Extracts the database schema and saves it temporarily to disk.
+- Uses an LLM to convert user questions into safe, read-only SQL queries.
+- Executes validated queries and summarizes preview results.
 
-## Key features
+The app is intended for local development and experimentation with non-production data.
 
-- Connect to common relational databases (MySQL, PostgreSQL, MSSQL, Oracle).
-- Automatic schema extraction using SQLAlchemy + langchain_community utilities.
-- Natural language -> SQL generation via an LLM (Cerebras model configured by environment variables).
-- Safety: LLM is instructed to produce read-only queries.
-- Result summarization (Markdown) using a second LLM pass.
-
-## Folder structure
-
-Top-level layout (important files/folders):
+## Repository layout
 
 ```
 Hackathon/
-├── main.py                       # Lightweight runner that calls the Streamlit app
-├── README.md                     # This file
-├── requirement.txt               # Python dependencies (install with pip)
-├── packages.txt                  # Optional additional package list (if present)
-├── pyproject.toml                # Project metadata (if present)
+├── main.py                       # Entrypoint that launches the Streamlit app
+├── README.md
+├── requirements.txt              # Python dependencies
+├── Dockerfile                    # Container recipe (provided)
 ├── app/
 │   ├── helpers/
 │   │   ├── db_connector.py       # Connects to DB and saves schema to /schema
-│   │   ├── llm_helper.py         # LLM client factory (uses CEREBRAS_API_KEY env var)
+│   │   ├── llm_helper.py         # LLM client factory (reads CEREBRAS_API_KEY)
 │   │   ├── query_runner.py       # Executes queries and safety checks
-│   │   └── ...
 │   ├── prompts/
-│   │   ├── sql_prompt.py         # Template used to instruct the LLM for SQL generation
-│   │   └── summary_prompt.py     # Template for result summarization
+│   │   ├── sql_prompt.py         # Prompt template for SQL generation
+│   │   └── summary_prompt.py     # Prompt template for result summarization
 │   └── streamlit/
-│       └── streamlit_app.py      # Streamlit UI and application flow
-└── schema/                       # Temporary schema files created on connect
+│       └── streamlit_app.py      # Streamlit UI and app flow
+└── schema/                       # Temporary schema files written on connect
 ```
 
-## Quickstart (Windows / PowerShell)
+## Prerequisites
 
-1. Install Python (3.11+ recommended). Open PowerShell (`pwsh.exe`).
+- Python 3.11+ (for local / non-Docker)
+- Docker (if using Docker)
+- Access to a test/dev database (MySQL, PostgreSQL, MSSQL or Oracle)
+- An LLM API key: the project expects `CEREBRAS_API_KEY` (used by `app/helpers/llm_helper.py`).
+
+## Environment variables
+
+Create a `.env` file in the project root (same folder as `main.py`) and add:
+
+```
+CEREBRAS_API_KEY=your_cerebras_api_key_here
+# Add any other provider credentials here if you change the LLM helper
+```
+
+## Run without Docker (recommended for development)
+
+1. Open terminal in the project root.
 
 2. Create and activate a virtual environment:
 
@@ -48,99 +57,72 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-3. Install dependencies. The repository includes `requirement.txt` and `packages.txt`—install whichever file you maintain. Example:
+3. Install dependencies:
 
 ```powershell
 pip install --upgrade pip
-pip install -r requirement.txt
-# If you also have packages.txt and want to install it:
-# pip install -r packages.txt
+pip install -r requirements.txt
 ```
 
-Note: Some database drivers (see below) are optional and only needed for the DB type you plan to connect to.
+4. Create `.env` with `CEREBRAS_API_KEY` (see above).
 
-4. Create a `.env` file in the project root (same folder as `main.py`) and add your LLM API key(s). At minimum the app expects:
-
-```
-CEREBRAS_API_KEY=your_cerebras_api_key_here
-```
-
-The code uses python-dotenv to load environment variables.
-
-5. Run the Streamlit app. You can run the app directly with Streamlit so it launches a local web server:
+5. Start the Streamlit app:
 
 ```powershell
 streamlit run main.py
 ```
 
-Opening that will show the Connect page where you can enter database credentials.
+Open the URL shown by Streamlit (usually http://localhost:8501) and use the Connect form.
 
-(Alternatively you can run `python main.py`, but `streamlit run` is the usual pattern for Streamlit apps.)
+Notes (non-Docker):
 
-## Supported databases and driver notes
+- The app writes temporary schema files to the `schema/` folder and deletes them after ~1 hour.
+- If the schema file expires while you're in a session you will be prompted to reconnect.
 
-The app supports the following DB types (the selection list is shown in the UI):
+## Run with Docker
 
-- MYSQL
-- POSTGRESQL
-- MSSQL
-- ORACLE
+The repository includes a `Dockerfile` designed to build an image with the runtime and required packages. The Dockerfile installs common client dependencies (MariaDB, unixODBC, etc.).
 
-Driver strings used in `app/helpers/db_connector.py`:
-
-- MySQL: `mysql+mysqldb://` (requires a MySQL DB driver such as `mysqlclient` / `MySQL-python`)
-- PostgreSQL: `postgresql+psycopg2://` (install `psycopg2-binary`)
-- MSSQL: `mssql+pymssql://` (install `pymssql`)
-- Oracle: `oracle+cx_oracle://` (install `cx_Oracle` and Oracle client libraries)
-
-Install only the DB drivers you need. Example pip installs (PowerShell):
+Build the image (from the project root):
 
 ```powershell
-pip install psycopg2-binary      # PostgreSQL
-pip install mysqlclient          # MySQL (may need Visual C++ / build tools on Windows)
-pip install pymssql              # MSSQL
-# Oracle requires cx_Oracle + Oracle Instant Client (follow cx_Oracle docs)
+# Replace <tag> with the image name you want, e.g. chatwithdb:latest
+docker build -t chatwithdb:latest .
 ```
 
-If you run into issues installing `mysqlclient` on Windows, you can use `PyMySQL` with a connection string modification or install precompiled wheels.
+Run the container (recommended: pass the LLM API key via env and map port 8501):
 
-## How it works (high-level)
+```powershell
+docker run --rm -it \
+   -e CEREBRAS_API_KEY="your_cerebras_api_key_here" \
+   -p 8501:8501 \
+   --name chatwithdb_local \
+   chatwithdb:latest
+```
 
-1. User opens the app and fills the connection form (DB type, host, port, user, password, database).
-2. Backend connects using SQLAlchemy and extracts a textual schema dump using `langchain_community.utilities.sql_database.SQLDatabase`.
-3. Schema is saved to `schema/{database}_{db_type}.sql` and scheduled for deletion after 1 hour.
-4. When the user asks a question, the app:
-   - Loads the saved schema file and the question.
-   - Uses the LLM (configured in `app/helpers/llm_helper.py`) to generate a single, read-only SQL query.
-   - Validates the generated SQL for safety via `app/helpers/query_runner.py`.
-   - Executes the query and shows a preview (first 5 rows).
-   - Summarizes the preview rows using an LLM prompt template and displays the summary in Markdown.
+If you prefer to mount a local `.env` or the entire repo into the container (so changes are picked up), use a volume:
 
-## Important security & safety notes
+```powershell
+docker run --rm -it \
+   --env-file .env \
+   -v ${PWD}:/app \
+   -p 8501:8501 \
+   chatwithdb:latest
+```
 
-- The app is intended for local/dev use only. Do not point it at production databases with sensitive data unless you fully understand the risk.
-- Schema files are written to the `schema/` folder and automatically deleted after one hour. Still treat them as sensitive.
-- The LLM is instructed via prompts to produce read-only SQL. The app also runs a safety check before executing queries, but you should review any generated SQL before running it against sensitive systems.
+Notes (Docker):
 
-## Where to look / developer notes
+- Database drivers that require system libraries (e.g., Oracle Instant Client) may need extra setup in the Docker image. The provided Dockerfile includes common runtime packages but you may need to adjust it for your DB.
+- The `schema/` directory inside the container is ephemeral. If you want to persist it for debugging, mount a host volume: `-v ${PWD}/schema:/app/schema`.
 
-- SQL prompt template: `app/prompts/sql_prompt.py` — controls how the LLM is asked to output SQL (very strict: only a code block and read-only SQL).
-- Summary prompt: `app/prompts/summary_prompt.py` — controls the result summarization style.
-- DB connector: `app/helpers/db_connector.py` — creates the SQLAlchemy engine and extracts/saves schema.
-- LLM client: `app/helpers/llm_helper.py` — returns an LLM client. It reads `CEREBRAS_API_KEY` from environment.
-- Streamlit UI: `app/streamlit/streamlit_app.py` — the main UI and flow.
+## Security & best practices
 
-If you modify prompts or the LLM selection, be careful to preserve the safety rules in `sql_prompt.py`.
+- Do not use production credentials while testing. Limit network access to test databases.
+- Treat the `schema/` files as sensitive. They are automatically removed after one hour, but still store metadata about your DB.
+- Review generated SQL before executing against critical systems.
 
-## Troubleshooting
+## License
 
-- Streamlit not found: make sure you installed `streamlit` into the activated virtualenv.
-- DB connection fails: confirm host/port, network access, username/password and correct DB driver installed.
-- LLM errors: confirm `CEREBRAS_API_KEY` is present in the environment and that the model name/config in `llm_helper.py` is supported by your account.
-- Schema file missing after connect: the schema file is deleted after one hour. Reconnect to refresh.
+No license file is included. Add a `LICENSE` if you plan to publish or share this project publicly.
 
-## License & contact
-
-This repository does not include a license file. Add a `LICENSE` if you plan to publish or share.
-
-For questions about running or developing this app, inspect the files under `app/` and open an issue or contact the project maintainer.
+---
