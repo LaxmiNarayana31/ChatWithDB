@@ -1,18 +1,19 @@
 # ChatWithDB
 
-ChatWithDB is a Streamlit application for interactively querying relational databases using natural language. It:
+ChatWithDB is a Streamlit app that lets you query databases using natural language. It connects to MySQL, PostgreSQL, MSSQL, or Oracle and uses Large Language Models (LLMs) to:
 
-- Connects to a database (MySQL, PostgreSQL, MSSQL, Oracle).
-- Extracts the database schema and saves it temporarily to disk.
-- Uses an LLM to convert user questions into safe, read-only SQL queries.
-- Executes validated queries and summarizes preview results.
+- Convert questions into safe, read-only SQL queries
+- Execute and summarize query results for easy interpretation
 
-The app is intended for local development and experimentation with non-production data.
+## LLM Integration
+Powered by the Cerebras API, ChatWithDB uses:
+
+- `gpt-oss-120b` for SQL generation
+- `llama3.1-8b` for summarization and markdown output
 
 ## Repository layout
 
 ```
-Hackathon/
 ├── main.py                       # Entrypoint that launches the Streamlit app
 ├── README.md
 ├── requirements.txt              # Python dependencies
@@ -27,7 +28,6 @@ Hackathon/
 │   │   └── summary_prompt.py     # Prompt template for result summarization
 │   └── streamlit/
 │       └── streamlit_app.py      # Streamlit UI and app flow
-└── schema/                       # Temporary schema files written on connect
 ```
 
 ## Prerequisites
@@ -35,7 +35,7 @@ Hackathon/
 - Python 3.11+ (for local / non-Docker)
 - Docker (if using Docker)
 - Access to a test/dev database (MySQL, PostgreSQL, MSSQL or Oracle)
-- An LLM API key: the project expects `CEREBRAS_API_KEY` (used by `app/helpers/llm_helper.py`).
+- An LLM API key: the project expects `CEREBRAS_API_KEY`
 
 ## Environment variables
 
@@ -43,7 +43,6 @@ Create a `.env` file in the project root (same folder as `main.py`) and add:
 
 ```
 CEREBRAS_API_KEY=your_cerebras_api_key_here
-# Add any other provider credentials here if you change the LLM helper
 ```
 
 ## Run without Docker (recommended for development)
@@ -73,11 +72,6 @@ streamlit run main.py
 ```
 
 Open the URL shown by Streamlit (usually http://localhost:8501) and use the Connect form.
-
-Notes (non-Docker):
-
-- The app writes temporary schema files to the `schema/` folder and deletes them after ~1 hour.
-- If the schema file expires while you're in a session you will be prompted to reconnect.
 
 ## Run with Docker
 
@@ -110,19 +104,11 @@ docker run --rm -it \
    chatwithdb:latest
 ```
 
-Notes (Docker):
-
-- Database drivers that require system libraries (e.g., Oracle Instant Client) may need extra setup in the Docker image. The provided Dockerfile includes common runtime packages but you may need to adjust it for your DB.
-- The `schema/` directory inside the container is ephemeral. If you want to persist it for debugging, mount a host volume: `-v ${PWD}/schema:/app/schema`.
-
 ## Security & best practices
 
 - Do not use production credentials while testing. Limit network access to test databases.
-- Treat the `schema/` files as sensitive. They are automatically removed after one hour, but still store metadata about your DB.
 - Review generated SQL before executing against critical systems.
 
 ## License
-
 No license file is included. Add a `LICENSE` if you plan to publish or share this project publicly.
-
 ---
