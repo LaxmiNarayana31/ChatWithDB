@@ -11,6 +11,7 @@ RUN apt-get update && \
         gcc \
         g++ \
         libffi-dev \
+        libpq-dev \
         mariadb-client libmariadb-dev-compat libmariadb-dev \
         unixodbc-dev pkg-config make \
     && rm -rf /var/lib/apt/lists/*
