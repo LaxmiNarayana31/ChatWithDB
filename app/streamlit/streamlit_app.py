@@ -25,6 +25,8 @@ def main():
         "db_schema_file": None,
         "query_response": None,
         "form_submitted": False,
+        "generated_sql_query": None,
+        "show_sql": False,
     }
     for key, val in defaults.items():
         if key not in st.session_state:
@@ -67,12 +69,17 @@ def main():
                             st.session_state.db_schema_file = schema_file
                             st.session_state.form_submitted = True
                             st.session_state.page = "chat"
-                            st.success(f"Connected!")
+                            # st.success(f"Connected!")
+                            st.success("Connected! Redirecting to chat...")
+                            # Delay slightly before rerun to give Streamlit time to update UI
+                            time.sleep(0.5)
+                            st.session_state.page = "chat"
                             st.rerun()
                         except OperationalError as e:
                             print(f"OperationalError: {e}")
                         except Exception as e:
                             st.error(f"Connection failed")
+
     # ---------------------------
     # Chat Page
     # ---------------------------
@@ -142,9 +149,8 @@ def main():
                         if match:
                             generated_sql_query = match.group(1).strip()
 
-                        print("============ generated_sql_query =============")
-                        print(generated_sql_query)
-                        print("=============================================")
+                        # Save to session for "Show SQL" button
+                        st.session_state.generated_sql_query = generated_sql_query
 
                         # ---------------------------
                         # Validate + Run SQL
@@ -178,3 +184,13 @@ def main():
 
             if st.session_state.query_response:
                 st.markdown(st.session_state.query_response)
+
+                # ---------------------------
+                # Show SQL Button
+                # ---------------------------
+                if st.session_state.generated_sql_query:
+                    if st.button("Show SQL Query"):
+                        st.session_state.show_sql = not st.session_state.show_sql
+
+                    if st.session_state.show_sql:
+                        st.code(st.session_state.generated_sql_query, language="sql")
