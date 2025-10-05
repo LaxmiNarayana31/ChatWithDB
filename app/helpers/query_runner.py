@@ -1,3 +1,4 @@
+import re
 import traceback
 
 import MySQLdb
@@ -65,7 +66,8 @@ class QueryRunner:
         try:
             unsafe_keywords = ["DROP", "DELETE", "UPDATE", "INSERT", "ALTER", "TRUNCATE"]
             q_upper = query.upper()
-            return not any(keyword in q_upper for keyword in unsafe_keywords)
+            pattern = r"\b(" + "|".join(unsafe_keywords) + r")\b"
+            return re.search(pattern, q_upper) is None
         except Exception as e:
             # Get the traceback as a string
             traceback_str = traceback.format_exc()
