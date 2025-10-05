@@ -110,5 +110,6 @@ docker run --rm -it \
 - Review generated SQL before executing against critical systems.
 
 ## License
-No license file is included. Add a `LICENSE` if you plan to publish or share this project publicly.
+
+This project is open source and intended for learning and development purposes. You are free to use, modify, and share the code under a permissive license (such as MIT or Apache 2.0). If you plan to publish or distribute this project, please add a `LICENSE` file to clarify the terms and ensure compliance with open source best practices.
 ---
