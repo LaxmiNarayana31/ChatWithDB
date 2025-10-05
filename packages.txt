@@ -2,5 +2,6 @@ python3-dev
 default-libmysqlclient-dev
 build-essential
 pkg-config
+libpq-dev
 unixodbc
 unixodbc-dev
